@@ -463,32 +463,133 @@ end
 
 open Join
 
-let%test "test add pattern" =
-  let pats, q = Compile.compile (Compile.of_sexp [%s f "?a" (g "?a")]) in
+let testable_sub =
+  let open Alcotest in
+  let test_eclass_id = int in
+  let test_map =
+    of_pp
+      (Fmt.using StringMap.to_list
+         (Fmt.list ~sep:Fmt.comma
+            (Fmt.parens (Fmt.pair ~sep:(Fmt.any " ->@ ") Fmt.string Fmt.int))))
+  in
+  list @@ pair test_eclass_id test_map
+
+let get_ematches query exprs =
+  let graph = EGraph.init () in
+  List.iter (fun e -> ignore @@ EGraph.add_sexp graph e) exprs;
+  EGraph.ematch graph (EGraph.eclasses graph) query |> Iter.to_list
+
+let get_join_matches query exprs =
+  let graph = EGraph.init () in
+  List.iter (fun e -> ignore @@ EGraph.add_sexp graph e) exprs;
+  let pats, q, root_pattern = Compile.compile query in
+  let matcher =
+    GenericJoin.make (EGraph.add_node graph) String.compare pats root_pattern q
+  in
+  List.iter (fun e -> GenericJoin.add_to_relations_sexp matcher e) exprs;
+  GenericJoin.generic_join' matcher
+
+let compare_matches query exprs =
+  Alcotest.check testable_sub "equal subs"
+    (List.sort Stdlib.compare (get_ematches query exprs))
+    (List.sort Stdlib.compare (get_join_matches query exprs))
+
+let%test "f ?a (g ?a)" =
+  compare_matches
+    (Query.of_sexp [%s f "?a" (g "?b")])
+    [ [%s f 1 (g 1)]; [%s f 1 (g 2)]; [%s f 2 (g 2)] ]
+
+let%test "f ?a (g ?b)" =
+  compare_matches
+    (Query.of_sexp [%s f "?a" (g "?b")])
+    [ [%s f 1 (g 1)]; [%s f 1 (g 2)]; [%s f 2 (g 2)] ]
+
+let%test "f (h ?a) (g ?a)" =
+  compare_matches
+    (Query.of_sexp [%s f "?a" (g "?b")])
+    [
+      [%s f (h 1) (g 1)];
+      [%s f (h 2) (g 2)];
+      [%s f (g 1) (g 2)];
+      [%s f (g 1) (h 2)];
+      [%s f (h 1) (g 2)];
+    ]
+
+(*
+let%test "test with ematch (f ?a (g ?b))" =
+  let query = Query.of_sexp [%s f "?a" (g "?b")] in
   let graph = EGraph.init () in
   let _ = EGraph.add_sexp graph [%s f 1 (g 1)] in
   let _ = EGraph.add_sexp graph [%s f 1 (g 1)] in
   let _ = EGraph.add_sexp graph [%s f 2 (g 2)] in
-  let all_vars = Compile.get_all_vars (pats, q) in
+  let matches =
+    EGraph.ematch graph (EGraph.eclasses graph) query |> Iter.to_list
+  in
+  Fmt.(pr "%a\n" Query.pp query);
+  Fmt.(pr "%a\n" Fmt.int (EGraph.add_sexp graph [%s 1]));
+  Fmt.(pr "%a\n" Fmt.int (EGraph.add_sexp graph [%s 2]));
+  Fmt.(pr "%a\n" Fmt.int (EGraph.add_sexp graph [%s f 1 (g 1)]));
+  Fmt.(pr "%a\n" Fmt.int (EGraph.add_sexp graph [%s f 2 (g 2)]));
+  Alcotest.check testable_sub "equal subs" matches []
+
+let%test "test match (f ?a (g ?a))" =
+  let pats, q, root_pattern =
+    Compile.compile (Compile.of_sexp [%s f "?a" (g "?a")])
+  in
+  let graph = EGraph.init () in
+  let _ = EGraph.add_sexp graph [%s f 1 (g 1)] in
+  let _ = EGraph.add_sexp graph [%s f 1 (g 1)] in
+  let _ = EGraph.add_sexp graph [%s f 2 (g 2)] in
   let matcher =
-    GenericJoin.make (EGraph.add_node graph) String.compare all_vars q
+    GenericJoin.make (EGraph.add_node graph) String.compare pats root_pattern q
   in
   GenericJoin.add_to_relations_sexp matcher [%s f 1 (g 1)];
   GenericJoin.add_to_relations_sexp matcher [%s f 1 (g 2)];
   GenericJoin.add_to_relations_sexp matcher [%s f 2 (g 2)];
-  GenericJoin.add_to_relations_sexp matcher [%s g 1];
-  GenericJoin.add_to_relations_sexp matcher [%s g 2];
-  GenericJoin.add_to_relations_sexp matcher [%s 1];
-  GenericJoin.add_to_relations_sexp matcher [%s 2];
   let testable = Alcotest.(list (of_pp GenericJoin.pp_substitution)) in
-  (* Fmt.(pr "LEN: %a\n" int (List.length (Compile.get_all_vars (pats, q)))); *)
-  (* Fmt.(pr "QQQQQ:: %a\n" (list string) (Compile.get_all_vars (pats, q))); *)
-  Alcotest.check testable ""
+  Alcotest.check testable "f ?a (g ?a)"
     [ [ ("x1", 5); ("x0", 4); ("a", 3) ]; [ ("x1", 2); ("x0", 1); ("a", 0) ] ]
     (GenericJoin.generic_join matcher)
 
+let%test "test match (f (g ?a) (g ?b))" =
+  let pats, q, root_pattern =
+    Compile.compile (Compile.of_sexp [%s f (g "?a") (g "?b")])
+  in
+  let graph = EGraph.init () in
+  let _ = EGraph.add_sexp graph [%s f (g 1) (g 2)] in
+  let _ = EGraph.add_sexp graph [%s f (g 1) (g 3)] in
+  let _ = EGraph.add_sexp graph [%s f (g 3) (g 2)] in
+  let _ = EGraph.add_sexp graph [%s f (h 3) (g 2)] in
+  let matcher =
+    GenericJoin.make (EGraph.add_node graph) String.compare pats root_pattern q
+  in
+  GenericJoin.add_to_relations_sexp matcher [%s f (g 1) (g 2)];
+  GenericJoin.add_to_relations_sexp matcher [%s f (g 1) (g 3)];
+  GenericJoin.add_to_relations_sexp matcher [%s f (g 3) (g 2)];
+  GenericJoin.add_to_relations_sexp matcher [%s f (h 3) (g 2)];
+  let testable = Alcotest.(list (of_pp GenericJoin.pp_substitution)) in
+  Alcotest.check testable "f (g ?a) (g ?b)"
+    [
+      [ ("x2", 8); ("x1", 3); ("x0", 6); ("b", 2); ("a", 5) ];
+      [ ("x2", 4); ("x1", 3); ("x0", 1); ("b", 2); ("a", 0) ];
+      [ ("x2", 7); ("x1", 6); ("x0", 1); ("b", 5); ("a", 0) ];
+    ]
+    (GenericJoin.generic_join matcher)
+  *)
+
 (*
   TODO:
+  X Fix compile to return all pattern variables that appear
+  X Fix add_to_relations_sexp to recursively add expressions
+  X Make it return only the relevant patterns, not auxiliary ones (and return substitution) (generic_join')
+  - Make testable for substitution type
+  - Modify tests to compare with ematching function.
+    - Modify tests checking so that we can give just a list of matches.
+  - Helper function for creating tests
   - Add more matching tests
+  - Handle patterns that appear more than once in a relation.
+  - Deal with select all query Q(x) :- x. Special case
+
+  Note: broke abstraction of private ints for debugging purposes
 
    *)

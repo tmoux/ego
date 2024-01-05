@@ -1,4 +1,6 @@
 open Types
+open Language
+
 (*
    An implementation of the Generic Join algorithm, that will answer queries of the form
    Q(x_1, ..., x_k) :- R_1(X_1), ..., R_n(X_n)
@@ -17,6 +19,7 @@ open Types
 
 (* Convert query to conjuctive query form
    *)
+
 module Compile = struct
   let curv = ref 0
 
@@ -38,27 +41,22 @@ module Compile = struct
         let v = fresh () in
         (v, (f, v :: vs) :: List.concat atoms)
 
-  module StringSet = Set.Make (String)
-
   let rec get_vars : Symbol.t Query.t -> StringSet.t = function
     | V x -> StringSet.singleton x
     | Q (_, ps) ->
         List.fold_right StringSet.union (List.map get_vars ps) StringSet.empty
 
+  let get_all_vars ps =
+    let open StringSet in
+    List.fold_right union (List.map (fun (_, ls) -> ls |> of_list) ps) empty
+    |> to_list
+
   let compile q =
     reset ();
     let root, atoms = aux q in
-    let vars =
-      StringSet.union (StringSet.singleton root) (get_vars q)
-      |> StringSet.to_list
-    in
-    (vars, atoms)
-
-  let get_all_vars (vs, ps) =
-    let open StringSet in
-    union (vs |> of_list)
-      (List.fold_right union (List.map (fun (_, ls) -> ls |> of_list) ps) empty)
-    |> to_list
+    let vars = get_all_vars atoms in
+    let pattern_vars = get_vars q in
+    (vars, atoms, (root, pattern_vars))
 
   let of_sexp = Query.of_sexp Symbol.intern
 
@@ -113,11 +111,9 @@ module Trie = struct
             else assert false)
   (* else insert r root) *)
 
-  let trywalk k v n =
-    match n with
-    | Nil -> Some(Nil)
-    | Node (k', branches) ->
-        if k = k' then Hashtbl.find_opt branches v else Some n
+  let trywalk k v = function
+    | Node (k', branches) when k = k' -> Hashtbl.find_opt branches v
+    | n -> Some n
 
   let count_branches k = function
     | Nil -> None
@@ -137,20 +133,24 @@ module GenericJoin = struct
   let pp_k = Fmt.string
   let pp_eclass_id = Fmt.int
 
+
+  type substitution' = eclass_id * eclass_id StringMap.t
   type substitution = (k * eclass_id) list [@@deriving show]
   type trie = (k, eclass_id) Trie.t
 
   type t = {
     pat_ordering : k -> k -> int;
     patterns : k list;
+    root_pattern : k * StringSet.t;
     to_id : Term.t -> eclass_id;
     relations : (Compile.t * trie) list;
   }
 
-  let make to_id pat_ordering patterns queries : t =
+  let make to_id pat_ordering patterns root_pattern queries : t =
     {
       pat_ordering;
       patterns;
+      root_pattern;
       to_id;
       relations =
         List.map
@@ -194,13 +194,17 @@ module GenericJoin = struct
           add_to_trie self.pat_ordering (root_id :: fs) pat trie)
       self.relations
 
-  let add_to_relations_sexp self e =
+  let rec add_to_relations_sexp self e =
+    (match e with
+    | Sexplib.Sexp.List (_ :: rest) ->
+        List.iter (add_to_relations_sexp self) rest
+    | _ -> ());
     let f, fs = Term.of_sexp self.to_id e in
-    Fmt.(pr "%a\n" Sexplib.Sexp.pp_hum e);
     (*
-    Fmt.(pr "%a" (list int) fs);
-    print_string "  \n";
-    print_string f; *)
+Fmt.(pr "%a\n" Sexplib.Sexp.pp_hum e);
+Fmt.(pr "%a" (list int) fs);
+print_string "  \n";
+print_string f; *)
     add_to_relations self (f, fs)
 
   let argmin f =
@@ -252,11 +256,34 @@ module GenericJoin = struct
           List.concat
             (List.map
                (fun (v, relations') ->
+                 (*
                  Fmt.(pr "trying %a\n" int v);
                  let res = go relations' ((var, v) :: current_sub) vars' in
                  Fmt.(pr "back up from %a\n" int v);
-                 res)
+                 res) *)
+                 go relations' ((var, v) :: current_sub) vars')
                (get_substitutions var relations))
     in
     go (List.map snd self.relations) [] self.patterns
+
+  let generic_join' self : substitution' list =
+    let open StringMap in
+    let root, patterns = self.root_pattern in
+    (* Fmt.(pr "patterns: %a\n" (list string) (patterns |> StringSet.to_list));
+    Fmt.(pr "root: %a\n" string root); *)
+    let rec go (relations : trie list) root_sub current_sub = function
+      | [] -> [ Option.get root_sub, current_sub ]
+      | var :: vars' ->
+          List.concat
+            (List.map
+               (fun (v, relations') ->
+                 let current_sub' =
+                   if not (StringSet.mem var patterns) then current_sub
+                   else add var v current_sub
+                 in
+                 let root_sub' = if String.equal var root then Some(v) else root_sub in
+                 go relations' root_sub' current_sub' vars')
+               (get_substitutions var relations))
+    in
+    go (List.map snd self.relations) None empty self.patterns
 end
