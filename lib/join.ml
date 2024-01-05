@@ -181,7 +181,7 @@ module GenericJoin = struct
         Hashtbl.to_seq table |> List.of_seq
         |> List.sort (fun (k, _) (k', _) -> ordering k k')
       in
-      Fmt.pr "%a\n" pp_substitution r;
+      (* Fmt.pr "%a\n" pp_substitution r; *)
       Trie.insert r trie
     with Invalid -> ()
 
@@ -247,9 +247,9 @@ print_string f; *)
 
   let generic_join self : substitution list =
     let rec go (relations : trie list) current_sub =
-      Fmt.pr "CUR: %a\n" pp_substitution current_sub;
+      (* Fmt.pr "CUR: %a\n" pp_substitution current_sub;
       Fmt.pr "Trie: %a\n" (Trie.pp pp_k pp_eclass_id) (List.nth relations 0);
-      Fmt.pr "Trie: %a\n" (Trie.pp pp_k pp_eclass_id) (List.nth relations 1);
+      Fmt.pr "Trie: %a\n" (Trie.pp pp_k pp_eclass_id) (List.nth relations 1); *)
       function
       | [] -> [ current_sub ]
       | var :: vars' ->

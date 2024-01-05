@@ -20,17 +20,12 @@ module Id : sig
       {!t}, is used to represent equivalence classes in the EGraph
       data-structures provided by {!Ego}. *)
 
-
-  type t = private int
+  type t = int
   (** An abstract datatype used to represent equivalence classes in
       {!Ego}. *)
-
 end
 
-
-
-module Basic: sig
-
+module Basic : sig
   (** This module implements a {i fairly efficient}
       "syntactic-rewrite-only" EGraph-based equality saturation engine
       that operates over Sexps.
@@ -43,7 +38,7 @@ module Basic: sig
       EGraphs across executions, check out the EGraphs defined in
       {!Ego.Generic} *)
 
-  module Symbol : sig  
+  module Symbol : sig
     (** Implements an efficient encoding of strings
 
         Note: Datatypes using this module are not safe for
@@ -61,7 +56,7 @@ module Basic: sig
 
     val to_string : t -> string
     (** [to_string t] returns the string associated with symbol [t]. *)
-  end 
+  end
 
   module Query : sig
     (** This module encodes patterns (for both matching and
@@ -71,10 +66,10 @@ module Basic: sig
     type t
     (** Encodes a pattern over S-expressions. *)
 
-    val pp: Format.formatter -> t -> unit
+    val pp : Format.formatter -> t -> unit
     (** [pp fmt s] pretty prints the query [s]. *)
 
-    val show: t -> string
+    val show : t -> string
     (** [show s] converts the query [s] to a string *)
 
     val of_sexp : Sexplib0.Sexp.t -> t
@@ -91,7 +86,6 @@ module Basic: sig
 
     val to_sexp : t -> Sexplib0.Sexp.t
     (** [to_sexp s] converts a pattern back into an s-expression. This is idempotent with {!of_sexp}.  *)
-
   end
 
   module Rule : sig
@@ -101,20 +95,18 @@ module Basic: sig
     type t
     (** Encodes a rewrite rule over S-expressions.  *)
 
-    val pp: Format.formatter -> t -> unit
-    (** [pp fmt r] pretty prints the rewrite rule [r]. *) 
+    val pp : Format.formatter -> t -> unit
+    (** [pp fmt r] pretty prints the rewrite rule [r]. *)
 
-    val show: t -> string
+    val show : t -> string
     (** [show r] converts the rewrite rule [r] to a string *)
 
-
-    val make: from:Query.t -> into:Query.t -> t option
+    val make : from:Query.t -> into:Query.t -> t option
     (** [make ~from ~into] builds a syntactic rewrite rule from a
         matching pattern [from] and a result pattern [into].
 
         Iff [into] contains variables that are not bound in [from],
         then the rule is invalid, and the function will return [None]. *)
-
   end
 
   module EGraph : sig
@@ -125,7 +117,8 @@ module Basic: sig
     (** Represents a syntactic-rewrite-only EGraph that operates over
         Sexps. *)
 
-    val pp : ?pp_id:(Format.formatter -> Id.t -> unit) -> Format.formatter -> t -> unit
+    val pp :
+      ?pp_id:(Format.formatter -> Id.t -> unit) -> Format.formatter -> t -> unit
     (** [pp ?pp_id fmt graph] prints an internal representation of the
         [graph].
 
@@ -160,7 +153,11 @@ module Basic: sig
         {b Note}: If you call {!merge} manually, you must call
         {!rebuild} before running any queries or extraction.  *)
 
-    val extract: ((Id.t -> float) -> (Symbol.t * Id.t list) -> float) -> t -> Id.t -> Sexplib0.Sexp.t
+    val extract :
+      ((Id.t -> float) -> Symbol.t * Id.t list -> float) ->
+      t ->
+      Id.t ->
+      Sexplib0.Sexp.t
     (** [extract cost_fn graph] computes an extraction function [Id.t
         -> Sexplib0.Sexp.t] to extract terms (specified by [Id.t]) from
         the EGraph.
@@ -173,7 +170,7 @@ module Basic: sig
     (** [apply_rules graph rules] runs each of the rewrites in [rules]
         exactly once over the egraph [graph] and then returns. *)
 
-    val run_until_saturation: ?fuel:int -> t -> Rule.t list -> bool
+    val run_until_saturation : ?fuel:int -> t -> Rule.t list -> bool
     (** [run_until_saturation ?fuel graph rules] repeatedly each one
         of the rewrites in [rules] until no further changes occur ({i
         i.e equality saturation }), or until it runs out of [fuel].
@@ -181,11 +178,9 @@ module Basic: sig
         It returns a boolean indicating whether it reached equality
         saturation or had to terminate early.  *)
   end
-
 end
 
 module Generic : sig
-
   (** This module implements a generic EGraph-based equality
       saturation engine that operates over arbitrary user-defined
       languages and provides support for extensible custom user-defined
@@ -198,7 +193,6 @@ module Generic : sig
       You may want to check out the {{:../../index.html} quick start
       guide}. *)
 
-
   type ('node, 'analysis, 'data, 'permission) egraph
   (** A generic representation of an EGraph, parameterised over the
       language term types ['node], analysis state ['analysis] and data
@@ -210,7 +204,6 @@ module Generic : sig
      and transformation) over expressions and is part of
      {!Ego.Generic}'s API for expressing rewrites. *)
   module Query : sig
-
     type 'sym t
     (** Represents a query over expressions in a language with
         operators of type ['sym]. *)
@@ -223,14 +216,14 @@ module Generic : sig
     (** [to_sexp f q] converts a query [q] to a sexpression using [f]
         to convert operators in the query to strings. *)
 
-    val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+    val pp :
+      (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
     (** [pp f fmt q] pretty prints a query [q] using [f] to print the
         operators within the query. *)
 
     val show : (Format.formatter -> 'a -> unit) -> 'a t -> string
     (** [show f q] prints a query [q] to string using [f] to print
         operators within the query. *)
-
   end
 
   (** The module {!Scheduler} provides implementations of some generic
@@ -239,12 +232,10 @@ module Generic : sig
      See {!Make.BuildRunner} on how to compose a schedule with an
      EGraph definition. *)
   module Scheduler : sig
-
     (** The module {!Backoff} implements an exponential backoff
         scheduler. The scheduler works by tracking a maximum match
         limit, and (BEB) banning rules which exceed their limit.  *)
     module Backoff : sig
-
       type t
       (** Represents the persistent state of the scheduler - it really
           just tracks the match limit and ban_length parameters chosen
@@ -268,17 +259,16 @@ module Generic : sig
       (* */ *)
 
       val create_rule_metadata : t -> 'a -> data
-
       val should_stop : t -> int -> data Iter.t -> bool
 
       val guard_rule_usage :
         ('node, 'analysis, 'data, 'permission) egraph ->
-        t -> data -> int ->
+        t ->
+        data ->
+        int ->
         (unit -> (Id.t * Id.t StringMap.t) Iter.t) ->
         (Id.t * Id.t StringMap.t) Iter.t
-
     end
-
 
     (** The module {!Simple} implements a scheduler that runs every
        rule each time - i.e applies no scheduling at all. This works
@@ -288,9 +278,11 @@ module Generic : sig
     module Simple : sig
       type t
       type data
+
       val init : unit -> data
       val create_rule_metadata : t -> 'b -> data
       val should_stop : t -> int -> data -> bool
+
       val guard_rule_usage :
         ('node, 'analysis, 'data, 'permission) egraph ->
         t ->
@@ -322,7 +314,6 @@ module Generic : sig
   (** The {!LANGUAGE} module type represents the definition of an
       arbitrary language for use with an EGraph. *)
   module type LANGUAGE = sig
-
     type 'a shape
     (** Encodes the "shape" of an expression in the language over 
         sub-expressions of type ['a].  *)
@@ -337,7 +328,8 @@ module Generic : sig
     val equal_op : op -> op -> bool
     (** [equal_op op1 op2] returns true if the operators [op1], [op2] are equal.   *)
 
-    val pp_shape : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a shape -> unit
+    val pp_shape :
+      (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a shape -> unit
     (** [pp_shape f fmt s] pretty prints expressions of the language. *)
 
     val compare_shape : ('a -> 'a -> int) -> 'a shape -> 'a shape -> int
@@ -361,13 +353,11 @@ module Generic : sig
 
         {b Note}: If called with invalid arity of arguments for the
         operator [op] the function may throw an error. *)
-
   end
 
   (** The module type {!ANALYSIS} encodes the data-types for an
       abstract EClass analysis  over EGraphs. *)
   module type ANALYSIS = sig
-
     type t
     (** Represents any persistent state that an analysis may need to
         track separately from each EClasses.
@@ -389,15 +379,13 @@ module Generic : sig
     val equal_data : data -> data -> bool
     (** [equal_data d1 d2] returns true iff [d1], [d2] are equal.  *)
 
-    val default: data
+    val default : data
     (** Represents a default abstract value for new nodes.  *)
-
   end
 
   (** The module type {!ANALYSIS_OPS} defines the main operations for
       an EClass analysis over an EGraph. *)
   module type ANALYSIS_OPS = sig
-
     type 'a t
     (** Represents the EGraph over which the analysis operates. *)
 
@@ -448,14 +436,12 @@ module Generic : sig
         {b Note}: In terms of abstract interpretation, this function
         can be thought of the "abstraction" function, mapping concrete
         terms to their corresponding values in the abstract domain. *)
-
   end
 
   (** The module type {!COST} represents the definition of some
       arbitrary cost system for ranking expressions over some language.
   *)
   module type COST = sig
-
     type t
     (** Represents the type of a cost of a node.  *)
 
@@ -469,7 +455,6 @@ module Generic : sig
     (** [cost f node] should assign costs to the node [node]. It can
         use the provided function [f] to determine the cost of a
         child. *)
-
   end
 
   (** The module type {!SCHEDULER} represents the definition of some
@@ -479,7 +464,6 @@ module Generic : sig
       See {!Scheduler} for some generic schedulers.
   *)
   module type SCHEDULER = sig
-
     type 'p egraph
     (** Represents an EGraph with read/write permissions
         ['p].  *)
@@ -498,32 +482,34 @@ module Generic : sig
     val default : unit -> t
     (** Create a default instance of the scheduler.  *)
 
-    val should_stop: t -> int -> data Iter.t -> bool
+    val should_stop : t -> int -> data Iter.t -> bool
     (** [should_stop scheduler iteration data] is called whenever the
         EGraph reaches saturation (with the rules that have been
         scheduled), and should return whether further iterations should
         be run (i.e we will be trying a different schedule) or whether
         we have actually truly reached saturation. *)
 
-    val create_rule_metadata: t -> rule -> data
+    val create_rule_metadata : t -> rule -> data
     (** [create_rule_metadata scheduler rule] returns the initial
         metadata for a rule [rule]. *)
 
-    val guard_rule_usage:
-      rw egraph -> t -> data -> int ->
-      (unit -> (Id.t * Id.t StringMap.t) Iter.t) -> (Id.t * Id.t StringMap.t) Iter.t
-      (** [guard_rule_usage graph scheduler data iteration
+    val guard_rule_usage :
+      rw egraph ->
+      t ->
+      data ->
+      int ->
+      (unit -> (Id.t * Id.t StringMap.t) Iter.t) ->
+      (Id.t * Id.t StringMap.t) Iter.t
+    (** [guard_rule_usage graph scheduler data iteration
           gen_matches] is called before the execution of a particular
           rule (represented by the callback [gen_matches]), and should
           return a filtered set of matches according to the scheduling
           of the rule. *)
-
   end
 
   (** This module {!GRAPH_API} represents the interface through which
       EClass analyses can interact with an EGraph. *)
   module type GRAPH_API = sig
-
     type 'p t
     (** Represents an EGraph with read permissions ['p]. *)
 
@@ -564,7 +550,7 @@ module Generic : sig
     (** [get_data graph cls] returns the analysis data for EClass
         [cls] in EGraph [graph]. *)
 
-    val get_analysis: rw t -> analysis
+    val get_analysis : rw t -> analysis
     (** [get_analysis graph] returns the persistent analysis sate
         for an EGraph.  *)
 
@@ -575,14 +561,12 @@ module Generic : sig
     val merge : rw t -> Id.t -> Id.t -> unit
     (** [merge graph cls1 cls2] merges the two equivalence classes
         [cls1] and [cls2].  *)
-
   end
 
   (** This module type {!RULE} defines the rewrite interface for an
       EGraph, allowing users to express relatively complex
       transformations of expressions over some language. *)
   module type RULE = sig
-
     type t
     (** Represents rewrite rules over the language of the EGraph.  *)
 
@@ -614,13 +598,13 @@ module Generic : sig
 
     val make_dynamic :
       from:query ->
-      generator:(rw egraph -> Id.t -> Id.t StringMap.t -> query option) -> t
-      (** [make_dynamic ~from ~generator] creates a dynamic rewrite
+      generator:(rw egraph -> Id.t -> Id.t StringMap.t -> query option) ->
+      t
+    (** [make_dynamic ~from ~generator] creates a dynamic rewrite
           rule from a pattern [from] into a schema that is
           conditionally generated based on properties of the EGraph,
           the root eclass of the sub-expression being transformed and
           the eclasses of all bound variables *)
-
   end
 
   (** {1:constructors EGraph Constructors} *)
@@ -628,7 +612,6 @@ module Generic : sig
   (** This functor {!MakePrinter} allows users to construct EGraph
       printing utilities for a given {!LANGUAGE} and {!ANALYSIS}. *)
   module MakePrinter : functor (L : LANGUAGE) (A : ANALYSIS) -> sig
-
     (* val pp : Format.formatter -> (Id.t L.shape, A.t, A.data, 'b) egraph -> unit
      * (\** [pp fmt graph] pretty prints an internal representation of
      *     the graph.
@@ -640,7 +623,6 @@ module Generic : sig
     val to_dot : (Id.t L.shape, A.t, A.data, 'b) egraph -> Odot.graph
     (** [to_dot graph] converts an EGraph into a Graphviz
         representation for debugging.  *)
-
   end
 
   (** This functor {!MakeExtractor} allows users to construct an
@@ -648,123 +630,124 @@ module Generic : sig
       system. *)
   module MakeExtractor : functor
     (L : LANGUAGE)
-    (E : COST with type node := Id.t L.shape) -> sig
-
+    (E : COST with type node := Id.t L.shape)
+    -> sig
     val extract : (Id.t L.shape, 'a, 'b, rw) egraph -> Id.t -> L.t
     (** [extract graph] computes an extraction function [Id.t ->
         Sexplib0.Sexp.t] to extract concrete terms of the language {!L}
         from their respective EClasses (specified by [Id.t]) from the
         EGraph according to the cost system {!E}.  *)
-
   end
-
 
   (** This functor {!Make} serves as the main interface to Ego's
       generic EGraphs, and constructs an EGraph given a {!LANGUAGE}, an
       {!ANALYSIS} and it's {!ANALYSIS_OPS}. *)
-  module Make :
-    functor
-      (L : LANGUAGE)
-      (A : ANALYSIS)
-      (MakeAnalysisOps : functor
-         (S : GRAPH_API with type 'p t = (Id.t L.shape, A.t, A.data, 'p) egraph
-                         and type analysis := A.t
-                         and type data := A.data
-                         and type 'a shape := 'a L.shape
-                         and type node := L.t) ->
-         ANALYSIS_OPS with type  'p t = (Id.t L.shape, A.t, A.data, 'p) egraph
-                       and type analysis := A.t
-                       and type data := A.data
-                       and type node := Id.t L.shape) ->
-    sig
-
-      type 'p t = (Id.t L.shape, A.t, A.data, 'p) egraph
-      (** This type represents an EGraph parameterised over a
+  module Make : functor
+    (L : LANGUAGE)
+    (A : ANALYSIS)
+    (MakeAnalysisOps : functor
+       (S : GRAPH_API
+              with type 'p t = (Id.t L.shape, A.t, A.data, 'p) egraph
+               and type analysis := A.t
+               and type data := A.data
+               and type 'a shape := 'a L.shape
+               and type node := L.t) ->
+       ANALYSIS_OPS
+         with type 'p t = (Id.t L.shape, A.t, A.data, 'p) egraph
+          and type analysis := A.t
+          and type data := A.data
+          and type node := Id.t L.shape)
+    -> sig
+    type 'p t = (Id.t L.shape, A.t, A.data, 'p) egraph
+    (** This type represents an EGraph parameterised over a
           particular language {!L} and analysis {!A}. *)
 
-      (** This module {!Rule} defines the rewrite interface for the
+    (** This module {!Rule} defines the rewrite interface for the
           EGraph, allowing users to express relatively complex
           transformations of expressions of the Language {!L}. *)
-      module Rule:
-        RULE with type query := L.op Query.t
-              and type 'a egraph := (Id.t L.shape, A.t, A.data, 'a) egraph
+    module Rule :
+      RULE
+        with type query := L.op Query.t
+         and type 'a egraph := (Id.t L.shape, A.t, A.data, 'a) egraph
 
-
-      val freeze : rw t -> ro t
-      (** [freeze graph] returns a read-only reference to the EGraph.
+    val freeze : rw t -> ro t
+    (** [freeze graph] returns a read-only reference to the EGraph.
 
           {b Note}: it is safe to modify [graph] after passing it to
           freeze, this method is mainly intended to allow using the
           read-only APIs of the EGraph when you have a RW instance of
           the EGraph. *)
 
-      val init : A.t -> 'p t
-      (** [init analysis] creates a new EGraph with an initial
+    val init : A.t -> 'p t
+    (** [init analysis] creates a new EGraph with an initial
           persistent analysis state of [analysis]. *)
 
-      val class_equal: ro t -> Id.t -> Id.t -> bool
-      (** [class_equal graph cls1 cls2] returns true if and only if
+    val class_equal : ro t -> Id.t -> Id.t -> bool
+    (** [class_equal graph cls1 cls2] returns true if and only if
           [cls1] and [cls2] are congruent in the EGraph [graph].  *)
 
-      val set_data : rw t -> Id.t -> A.data -> unit
-      (** [set_data graph cls data] sets the analysis data for EClass
+    val set_data : rw t -> Id.t -> A.data -> unit
+    (** [set_data graph cls data] sets the analysis data for EClass
           [cls] in EGraph [graph] to be [data]. *)
 
-      val get_data : _ t -> Id.t -> A.data
-      (** [get_data graph cls] returns the analysis data for EClass
+    val get_data : _ t -> Id.t -> A.data
+    (** [get_data graph cls] returns the analysis data for EClass
           [cls] in EGraph [graph]. *)
 
-      val get_analysis: rw t -> A.t
-      (** [get_analysis graph] returns the persistent analysis sate
+    val get_analysis : rw t -> A.t
+    (** [get_analysis graph] returns the persistent analysis sate
           for an EGraph.  *)
 
-      val iter_children : ro t -> Id.t -> Id.t L.shape Iter.t
-      (** [iter_children graph cls] returns an iterator over the
+    val iter_children : ro t -> Id.t -> Id.t L.shape Iter.t
+    (** [iter_children graph cls] returns an iterator over the
           elements of an eclass [cls].  *)
 
-      (* val pp : Format.formatter -> (Id.t L.shape, 'a, A.data, _) egraph -> unit
-       * (\** [pp fmt graph] pretty prints an internal representation of
-       *     the graph.
-       * 
-       *     {b Note}: This is primarily intended for debugging, and the
-       *     output format is not guaranteed to remain consistent over
-       *     versions.  *\) *)
+    (* val pp : Format.formatter -> (Id.t L.shape, 'a, A.data, _) egraph -> unit
+     * (\** [pp fmt graph] pretty prints an internal representation of
+     *     the graph.
+     * 
+     *     {b Note}: This is primarily intended for debugging, and the
+     *     output format is not guaranteed to remain consistent over
+     *     versions.  *\) *)
 
-      val to_dot : (Id.t L.shape, A.t, A.data, _) egraph -> Odot.graph
-      (** [to_dot graph] converts an EGraph into a Graphviz
+    val to_dot : (Id.t L.shape, A.t, A.data, _) egraph -> Odot.graph
+    (** [to_dot graph] converts an EGraph into a Graphviz
           representation for debugging.  *)
 
-      val add_node : rw t -> L.t -> Id.t
-      (** [add_node graph term] adds the term [term] into the EGraph
+    val add_node : rw t -> L.t -> Id.t
+    (** [add_node graph term] adds the term [term] into the EGraph
           [graph] and returns the corresponding equivalence class. *)
 
-      val merge : rw t -> Id.t -> Id.t -> unit
-      (** [merge graph cls1 cls2] merges the two equivalence classes
+    val merge : rw t -> Id.t -> Id.t -> unit
+    (** [merge graph cls1 cls2] merges the two equivalence classes
           [cls1] and [cls2].  *)
 
-      val rebuild : rw t -> unit
-      (** [rebuild graph] restores the internal invariants of the
+    val rebuild : rw t -> unit
+    (** [rebuild graph] restores the internal invariants of the
           graph.
 
           {b Note}: If you call {!merge} manually (i.e outside of
           analysis functions), you must call {!rebuild} before running
           any queries or extraction. *)
 
-      val find_matches : ro t -> L.op Query.t -> (Id.t * Id.t StringMap.t) Iter.t
-      (** [find_matches graph query] returns an iterator over each
+    val find_matches : ro t -> L.op Query.t -> (Id.t * Id.t StringMap.t) Iter.t
+    (** [find_matches graph query] returns an iterator over each
           match of the query [query] in the EGraph. *)
 
-      val apply_rules : (Id.t L.shape, A.t, A.data, rw) egraph -> Rule.t list -> unit
-      (** [apply_rules graph rules] runs each of the rewrites in [rules]
+    val apply_rules :
+      (Id.t L.shape, A.t, A.data, rw) egraph -> Rule.t list -> unit
+    (** [apply_rules graph rules] runs each of the rewrites in [rules]
           exactly once over the egraph [graph] and then returns. *)
 
-      val run_until_saturation:
-        ?scheduler:Scheduler.Backoff.t ->
-        ?node_limit:[`Bounded of int | `Unbounded] ->
-        ?fuel:[`Bounded of int | `Unbounded] ->
-        ?until:((Id.t L.shape, A.t, A.data, rw) egraph -> bool) ->
-        (Id.t L.shape, A.t, A.data, rw) egraph -> Rule.t list -> bool
-      (** [run_until_saturation ?scheduler ?node_limit ?fuel ?until
+    val run_until_saturation :
+      ?scheduler:Scheduler.Backoff.t ->
+      ?node_limit:[ `Bounded of int | `Unbounded ] ->
+      ?fuel:[ `Bounded of int | `Unbounded ] ->
+      ?until:((Id.t L.shape, A.t, A.data, rw) egraph -> bool) ->
+      (Id.t L.shape, A.t, A.data, rw) egraph ->
+      Rule.t list ->
+      bool
+    (** [run_until_saturation ?scheduler ?node_limit ?fuel ?until
          graph rules] repeatedly each one of the rewrites in [rules]
          according to the scheduler [scheduler] until no further
          changes occur ({i i.e equality saturation }), or until it
@@ -775,22 +758,23 @@ module Generic : sig
          It returns a boolean indicating whether it reached equality
          saturation or had to terminate early.  *)
 
-      (** The module {!BuildRunner} allows users to supply their own
+    (** The module {!BuildRunner} allows users to supply their own
           custom domain-specific scheduling strategies for equality
           saturation by supplying a corresponding Scheduling module
           satisfying {!SCHEDULER} *)
-      module BuildRunner (S : SCHEDULER
-                          with type 'a egraph := (Id.t L.shape, A.t, A.data, rw) egraph
-                           and type rule := Rule.t) :
-      sig 
-
-        val run_until_saturation :
-          ?scheduler:S.t ->
-          ?node_limit:[`Bounded of int | `Unbounded] ->
-          ?fuel:[`Bounded of int | `Unbounded] ->
-          ?until:((Id.t L.shape, A.t, A.data, rw) egraph -> bool) ->
-          (Id.t L.shape, A.t, A.data, rw) egraph -> Rule.t list -> bool
-          (** [run_until_saturation ?scheduler ?node_limit ?fuel
+    module BuildRunner
+        (S : SCHEDULER
+               with type 'a egraph := (Id.t L.shape, A.t, A.data, rw) egraph
+                and type rule := Rule.t) : sig
+      val run_until_saturation :
+        ?scheduler:S.t ->
+        ?node_limit:[ `Bounded of int | `Unbounded ] ->
+        ?fuel:[ `Bounded of int | `Unbounded ] ->
+        ?until:((Id.t L.shape, A.t, A.data, rw) egraph -> bool) ->
+        (Id.t L.shape, A.t, A.data, rw) egraph ->
+        Rule.t list ->
+        bool
+      (** [run_until_saturation ?scheduler ?node_limit ?fuel
              ?until graph rules] repeatedly each one of the rewrites
              in [rules] according to the scheduler [scheduler] until
              no further changes occur ({i i.e equality saturation }),
@@ -800,9 +784,6 @@ module Generic : sig
 
               It returns a boolean indicating whether it reached
              equality saturation or had to terminate early.  *)
-
-      end
-
     end
-
+  end
 end

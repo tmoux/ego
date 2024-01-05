@@ -1,4 +1,4 @@
-type t = private int
+type t = int
 type store
 val eq_id : t -> t -> bool
 val repr : t -> int
