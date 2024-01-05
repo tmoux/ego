@@ -515,78 +515,63 @@ let%test "f (h ?a) (g ?a)" =
       [%s f (h 1) (g 2)];
     ]
 
-(*
-let%test "test with ematch (f ?a (g ?b))" =
-  let query = Query.of_sexp [%s f "?a" (g "?b")] in
-  let graph = EGraph.init () in
-  let _ = EGraph.add_sexp graph [%s f 1 (g 1)] in
-  let _ = EGraph.add_sexp graph [%s f 1 (g 1)] in
-  let _ = EGraph.add_sexp graph [%s f 2 (g 2)] in
-  let matches =
-    EGraph.ematch graph (EGraph.eclasses graph) query |> Iter.to_list
-  in
-  Fmt.(pr "%a\n" Query.pp query);
-  Fmt.(pr "%a\n" Fmt.int (EGraph.add_sexp graph [%s 1]));
-  Fmt.(pr "%a\n" Fmt.int (EGraph.add_sexp graph [%s 2]));
-  Fmt.(pr "%a\n" Fmt.int (EGraph.add_sexp graph [%s f 1 (g 1)]));
-  Fmt.(pr "%a\n" Fmt.int (EGraph.add_sexp graph [%s f 2 (g 2)]));
-  Alcotest.check testable_sub "equal subs" matches []
-
-let%test "test match (f ?a (g ?a))" =
-  let pats, q, root_pattern =
-    Compile.compile (Compile.of_sexp [%s f "?a" (g "?a")])
-  in
-  let graph = EGraph.init () in
-  let _ = EGraph.add_sexp graph [%s f 1 (g 1)] in
-  let _ = EGraph.add_sexp graph [%s f 1 (g 1)] in
-  let _ = EGraph.add_sexp graph [%s f 2 (g 2)] in
-  let matcher =
-    GenericJoin.make (EGraph.add_node graph) String.compare pats root_pattern q
-  in
-  GenericJoin.add_to_relations_sexp matcher [%s f 1 (g 1)];
-  GenericJoin.add_to_relations_sexp matcher [%s f 1 (g 2)];
-  GenericJoin.add_to_relations_sexp matcher [%s f 2 (g 2)];
-  let testable = Alcotest.(list (of_pp GenericJoin.pp_substitution)) in
-  Alcotest.check testable "f ?a (g ?a)"
-    [ [ ("x1", 5); ("x0", 4); ("a", 3) ]; [ ("x1", 2); ("x0", 1); ("a", 0) ] ]
-    (GenericJoin.generic_join matcher)
-
-let%test "test match (f (g ?a) (g ?b))" =
-  let pats, q, root_pattern =
-    Compile.compile (Compile.of_sexp [%s f (g "?a") (g "?b")])
-  in
-  let graph = EGraph.init () in
-  let _ = EGraph.add_sexp graph [%s f (g 1) (g 2)] in
-  let _ = EGraph.add_sexp graph [%s f (g 1) (g 3)] in
-  let _ = EGraph.add_sexp graph [%s f (g 3) (g 2)] in
-  let _ = EGraph.add_sexp graph [%s f (h 3) (g 2)] in
-  let matcher =
-    GenericJoin.make (EGraph.add_node graph) String.compare pats root_pattern q
-  in
-  GenericJoin.add_to_relations_sexp matcher [%s f (g 1) (g 2)];
-  GenericJoin.add_to_relations_sexp matcher [%s f (g 1) (g 3)];
-  GenericJoin.add_to_relations_sexp matcher [%s f (g 3) (g 2)];
-  GenericJoin.add_to_relations_sexp matcher [%s f (h 3) (g 2)];
-  let testable = Alcotest.(list (of_pp GenericJoin.pp_substitution)) in
-  Alcotest.check testable "f (g ?a) (g ?b)"
+let%test "f 3 (g ?a)" =
+  compare_matches
+    (Query.of_sexp [%s f 3 (g "?b")])
     [
-      [ ("x2", 8); ("x1", 3); ("x0", 6); ("b", 2); ("a", 5) ];
-      [ ("x2", 4); ("x1", 3); ("x0", 1); ("b", 2); ("a", 0) ];
-      [ ("x2", 7); ("x1", 6); ("x0", 1); ("b", 5); ("a", 0) ];
+      [%s f 3 (g 1)];
+      [%s f 3 (g 2)];
+      [%s f 2 (g 2)];
+      [%s f 2 (h 2)];
+      [%s f 3 (g 2)];
     ]
-    (GenericJoin.generic_join matcher)
-  *)
+
+let%test "f 3 5" =
+  compare_matches
+    (Query.of_sexp [%s f 3 5])
+    [
+      [%s f 3 5];
+      [%s f 3 3];
+      [%s f 2 (g 2)];
+      [%s f 2 (h 2)];
+      [%s f 3 (g 2)];
+    ]
+
+let%test "f ?a (f ?a (f ?a ?a))" =
+  compare_matches
+    (Query.of_sexp [%s f "?a" (f "?a" (f "?a" "?a"))])
+    [
+      [%s f 3 (f 3 (f 3 3))];
+      [%s f 3 3];
+      [%s f 2 (g 2)];
+      [%s f 2 (h 2)];
+      [%s f 3 (g 2)];
+      [%s f 4 (f 4 (f 4 4))];
+    ]
+
+    (* TODO: handle select-all query. Pass this test.
+let%test "?a" =
+  compare_matches
+    (Query.of_sexp [%s "?a"])
+    [
+      [%s f (h 1) (g 1)];
+      [%s f (h 2) (g 2)];
+      [%s f (g 1) (g 2)];
+      [%s f (g 1) (h 2)];
+      [%s f (h 1) (g 2)];
+    ]
+    *)
 
 (*
   TODO:
   X Fix compile to return all pattern variables that appear
   X Fix add_to_relations_sexp to recursively add expressions
   X Make it return only the relevant patterns, not auxiliary ones (and return substitution) (generic_join')
-  - Make testable for substitution type
-  - Modify tests to compare with ematching function.
-    - Modify tests checking so that we can give just a list of matches.
-  - Helper function for creating tests
-  - Add more matching tests
+  X Make testable for substitution type
+  X Modify tests to compare with ematching function.
+    X Modify tests checking so that we can give just a list of matches.
+  X Helper function for creating tests
+  - Add more matching tests that already do merging/rebuilding
   - Handle patterns that appear more than once in a relation.
   - Deal with select all query Q(x) :- x. Special case
 
