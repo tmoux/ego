@@ -471,7 +471,8 @@ let testable_sub =
     of_pp
       (Fmt.using StringMap.to_list
          (Fmt.list ~sep:Fmt.comma
-            (Fmt.parens (Fmt.pair ~sep:(Fmt.any " ->@ ") Fmt.string fmt_eclass_id))))
+            (Fmt.parens
+               (Fmt.pair ~sep:(Fmt.any " ->@ ") Fmt.string fmt_eclass_id))))
   in
   list @@ pair test_eclass_id test_map
 
@@ -530,13 +531,7 @@ let%test "f 3 (g ?a)" =
 let%test "f 3 5" =
   compare_matches
     (Query.of_sexp [%s f 3 5])
-    [
-      [%s f 3 5];
-      [%s f 3 3];
-      [%s f 2 (g 2)];
-      [%s f 2 (h 2)];
-      [%s f 3 (g 2)];
-    ]
+    [ [%s f 3 5]; [%s f 3 3]; [%s f 2 (g 2)]; [%s f 2 (h 2)]; [%s f 3 (g 2)] ]
 
 let%test "f ?a (f ?a (f ?a ?a))" =
   compare_matches
@@ -550,7 +545,7 @@ let%test "f ?a (f ?a (f ?a ?a))" =
       [%s f 4 (f 4 (f 4 4))];
     ]
 
-    (* TODO: handle select-all query. Pass this test.
+(* TODO: handle select-all query. Pass this test.
 let%test "?a" =
   compare_matches
     (Query.of_sexp [%s "?a"])
@@ -561,7 +556,7 @@ let%test "?a" =
       [%s f (g 1) (h 2)];
       [%s f (h 1) (g 2)];
     ]
-    *)
+*)
 
 (*
   TODO:
@@ -575,8 +570,8 @@ let%test "?a" =
   - Add more matching tests that already do merging/rebuilding
   X Handle patterns that appear more than once in a relation.
   - Deal with select all query Q(x) :- x. Special case
+  - Kind of annoying?
 
   Note: broke abstraction of private ints for debugging purposes
 
    *)
-

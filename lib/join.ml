@@ -31,7 +31,6 @@ module Compile = struct
 
   (* Var of string | Fun of Symbol.t * t list *)
 
-  (* TODO: Don't optimize constants yet? Or at all? *)
   type t = Symbol.t * string list [@@deriving show]
 
   let rec aux : Symbol.t Query.t -> string * t list = function
@@ -57,19 +56,7 @@ module Compile = struct
     let vars = get_all_vars atoms in
     let pattern_vars = get_vars q in
     (vars, atoms, (root, pattern_vars))
-
-  let of_sexp = Query.of_sexp Symbol.intern
-
-  (*
-  let%test "compiles" =
-    let test_t = Alcotest.of_pp pp in
-    let test_c = Alcotest.(pair (list string) (list test_t)) in
-    (* let q = Query.of_sexp [%s f "?a" (g "?a")] in *)
-    (* let q = Query.of_sexp [%s (f 1 (g "?a"))] in *)
-    let q = Query.of_sexp Symbol.intern [%s f (g "?a") (h "?a")] in
-    (* let q = Query.of_sexp Symbol.intern [%s "?a"] in *)
-    Alcotest.(check test_c) "prints f(?a, g(?a))" ([], []) (compile q)
-    *)
+  (* let of_sexp = Query.of_sexp Symbol.intern *)
 end
 
 module Hashtbl = struct
@@ -125,14 +112,11 @@ end
 
 module GenericJoin = struct
   (* Represents a single query. Has
-      - Function for converting a Compile.t to
-     - Constructed by giving the relations, patterns
+      - Function for converting a Compile.t
+      - Constructed by giving the relations, patterns
+      - We can add new relations to it.
   *)
   type k = string
-
-  let pp_k = Fmt.string
-  let pp_eclass_id = Fmt.int
-
 
   type substitution = eclass_id * eclass_id StringMap.t
   type trie = (k, eclass_id) Trie.t
@@ -247,10 +231,8 @@ print_string f; *)
   let generic_join self : substitution list =
     let open StringMap in
     let root, patterns = self.root_pattern in
-    (* Fmt.(pr "patterns: %a\n" (list string) (patterns |> StringSet.to_list));
-    Fmt.(pr "root: %a\n" string root); *)
     let rec go (relations : trie list) root_sub current_sub = function
-      | [] -> [ Option.get root_sub, current_sub ]
+      | [] -> [ (Option.get root_sub, current_sub) ]
       | var :: vars' ->
           List.concat
             (List.map
@@ -259,7 +241,9 @@ print_string f; *)
                    if not (StringSet.mem var patterns) then current_sub
                    else add var v current_sub
                  in
-                 let root_sub' = if String.equal var root then Some(v) else root_sub in
+                 let root_sub' =
+                   if String.equal var root then Some v else root_sub
+                 in
                  go relations' root_sub' current_sub' vars')
                (get_substitutions var relations))
     in
