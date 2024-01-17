@@ -465,12 +465,13 @@ open Join
 
 let testable_sub =
   let open Alcotest in
-  let test_eclass_id = int in
+  let fmt_eclass_id = Fmt.using Id.repr Fmt.int in
+  let test_eclass_id = testable fmt_eclass_id Id.eq_id in
   let test_map =
     of_pp
       (Fmt.using StringMap.to_list
          (Fmt.list ~sep:Fmt.comma
-            (Fmt.parens (Fmt.pair ~sep:(Fmt.any " ->@ ") Fmt.string Fmt.int))))
+            (Fmt.parens (Fmt.pair ~sep:(Fmt.any " ->@ ") Fmt.string fmt_eclass_id))))
   in
   list @@ pair test_eclass_id test_map
 
@@ -487,7 +488,7 @@ let get_join_matches query exprs =
     GenericJoin.make (EGraph.add_node graph) String.compare pats root_pattern q
   in
   List.iter (fun e -> GenericJoin.add_to_relations_sexp matcher e) exprs;
-  GenericJoin.generic_join' matcher
+  GenericJoin.generic_join matcher
 
 let compare_matches query exprs =
   Alcotest.check testable_sub "equal subs"
@@ -572,9 +573,10 @@ let%test "?a" =
     X Modify tests checking so that we can give just a list of matches.
   X Helper function for creating tests
   - Add more matching tests that already do merging/rebuilding
-  - Handle patterns that appear more than once in a relation.
+  X Handle patterns that appear more than once in a relation.
   - Deal with select all query Q(x) :- x. Special case
 
   Note: broke abstraction of private ints for debugging purposes
 
    *)
+

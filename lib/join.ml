@@ -134,8 +134,7 @@ module GenericJoin = struct
   let pp_eclass_id = Fmt.int
 
 
-  type substitution' = eclass_id * eclass_id StringMap.t
-  type substitution = (k * eclass_id) list [@@deriving show]
+  type substitution = eclass_id * eclass_id StringMap.t
   type trie = (k, eclass_id) Trie.t
 
   type t = {
@@ -246,27 +245,6 @@ print_string f; *)
         List.filter_map new_relations vs
 
   let generic_join self : substitution list =
-    let rec go (relations : trie list) current_sub =
-      (* Fmt.pr "CUR: %a\n" pp_substitution current_sub;
-      Fmt.pr "Trie: %a\n" (Trie.pp pp_k pp_eclass_id) (List.nth relations 0);
-      Fmt.pr "Trie: %a\n" (Trie.pp pp_k pp_eclass_id) (List.nth relations 1); *)
-      function
-      | [] -> [ current_sub ]
-      | var :: vars' ->
-          List.concat
-            (List.map
-               (fun (v, relations') ->
-                 (*
-                 Fmt.(pr "trying %a\n" int v);
-                 let res = go relations' ((var, v) :: current_sub) vars' in
-                 Fmt.(pr "back up from %a\n" int v);
-                 res) *)
-                 go relations' ((var, v) :: current_sub) vars')
-               (get_substitutions var relations))
-    in
-    go (List.map snd self.relations) [] self.patterns
-
-  let generic_join' self : substitution' list =
     let open StringMap in
     let root, patterns = self.root_pattern in
     (* Fmt.(pr "patterns: %a\n" (list string) (patterns |> StringSet.to_list));

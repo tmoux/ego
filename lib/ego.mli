@@ -20,7 +20,7 @@ module Id : sig
       {!t}, is used to represent equivalence classes in the EGraph
       data-structures provided by {!Ego}. *)
 
-  type t = int
+  type t = private int
   (** An abstract datatype used to represent equivalence classes in
       {!Ego}. *)
 end
